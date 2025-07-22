@@ -1,0 +1,35 @@
+stages:
+  - test
+  - sonarqube
+
+variables:
+  SONAR_HOST_URL: "https://sonarcloud.io"  # Or your self-hosted SonarQube URL
+
+before_script:
+  - apt-get update && apt-get install -y unzip curl
+  - php -v
+  - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+  - composer install --no-interaction --prefer-dist
+
+test:
+  image: php:8.2
+  stage: test
+  script:
+    - ./vendor/bin/phpunit --coverage-clover=coverage.xml
+
+sonarqube-check:
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  stage: sonarqube
+  script:
+    - sonar-scanner
+      -Dsonar.projectKey=$CI_PROJECT_NAME
+      -Dsonar.sources=app,src
+      -Dsonar.tests=tests
+      -Dsonar.host.url=$SONAR_HOST_URL
+      -Dsonar.login=$SONAR_TOKEN
+      -Dsonar.php.coverage.reportPaths=coverage.xml
+  only:
+    - main
+    - master

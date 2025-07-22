@@ -1,0 +1,42 @@
+stages:
+  - test
+  - sonarqube
+
+variables:
+  SONAR_HOST_URL: "https://sonarcloud.io"  # Or your self-hosted SonarQube URL
+  FLUTTER_VERSION: "3.22.1"
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .pub-cache/
+
+before_script:
+  - apt-get update && apt-get install -y curl git unzip xz-utils zip libglu1-mesa
+  - git clone https://github.com/flutter/flutter.git -b stable --depth 1
+  - export PATH="$PATH:`pwd`/flutter/bin"
+  - flutter doctor
+
+test:
+  image: dart:stable
+  stage: test
+  script:
+    - export PATH="$PATH:`pwd`/flutter/bin"
+    - flutter pub get
+    - flutter test --coverage
+
+sonarqube-check:
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  stage: sonarqube
+  script:
+    - sonar-scanner
+      -Dsonar.projectKey=$CI_PROJECT_NAME
+      -Dsonar.sources=lib
+      -Dsonar.host.url=$SONAR_HOST_URL
+      -Dsonar.login=$SONAR_TOKEN
+      -Dsonar.dart.coverage.reportPaths=coverage/lcov.info
+  only:
+    - main
+    - master

@@ -1,0 +1,33 @@
+stages:
+  - build
+  - sonarqube
+
+variables:
+  MAVEN_CLI_OPTS: "-s .m2/settings.xml --batch-mode"
+  SONAR_HOST_URL: "https://sonarcloud.io" # Or your own SonarQube server URL
+
+cache:
+  paths:
+    - .m2/repository
+
+before_script:
+  - echo "Using Maven version:"
+  - mvn -v
+
+build:
+  image: maven:3.9-eclipse-temurin-17
+  stage: build
+  script:
+    - mvn $MAVEN_CLI_OPTS clean verify jacoco:report
+
+sonarqube-check:
+  image: maven:3.9-eclipse-temurin-17
+  stage: sonarqube
+  script:
+    - mvn $MAVEN_CLI_OPTS sonar:sonar
+      -Dsonar.projectKey=$CI_PROJECT_NAME
+      -Dsonar.host.url=$SONAR_HOST_URL
+      -Dsonar.login=$SONAR_TOKEN
+  only:
+    - main
+    - master

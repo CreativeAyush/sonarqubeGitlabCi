@@ -1,0 +1,37 @@
+stages:
+  - test
+  - sonarqube
+
+variables:
+  SONAR_HOST_URL: "https://sonarcloud.io"  # Or your self-hosted SonarQube URL
+  VENV_PATH: ".venv"
+
+before_script:
+  - python -V
+  - python -m venv $VENV_PATH
+  - source $VENV_PATH/bin/activate
+  - pip install --upgrade pip
+  - pip install -r requirements.txt
+  - pip install coverage pytest
+
+test:
+  stage: test
+  script:
+    - source $VENV_PATH/bin/activate
+    - coverage run -m pytest
+    - coverage xml
+
+sonarqube-check:
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  stage: sonarqube
+  script:
+    - sonar-scanner
+      -Dsonar.projectKey=$CI_PROJECT_NAME
+      -Dsonar.sources=.
+      -Dsonar.host.url=$SONAR_HOST_URL
+      -Dsonar.login=$SONAR_TOKEN
+  only:
+    - main
+    - master

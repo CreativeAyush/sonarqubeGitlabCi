@@ -1,0 +1,46 @@
+stages:
+  - build
+  - sonarqube
+
+variables:
+  SONAR_HOST_URL: "https://sonarcloud.io"  # Or your self-hosted SonarQube server
+
+before_script:
+  - apt-get update && apt-get install -y build-essential gcov curl unzip
+
+build:
+  stage: build
+  script:
+    # Download build-wrapper for CFamily analysis
+    - curl -sSLo build-wrapper-linux-x86.zip https://binaries.sonarsource.com/Distribution/build-wrapper/build-wrapper-linux-x86.zip
+    - unzip -o build-wrapper-linux-x86.zip
+
+    # Run build wrapped with build-wrapper
+    - ./build-wrapper-linux-x86/build-wrapper-linux-x86-64 --out-dir bw-output make
+
+    # Run tests and generate coverage with gcov
+    - make test || true
+    - gcov src/*.c src/*.cpp || true
+
+artifacts:
+  paths:
+    - bw-output/
+    - *.gcda
+    - *.gcov
+
+sonarqube-check:
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  stage: sonarqube
+  script:
+    - sonar-scanner
+      -Dsonar.projectKey=$CI_PROJECT_NAME
+      -Dsonar.sources=src
+      -Dsonar.host.url=$SONAR_HOST_URL
+      -Dsonar.login=$SONAR_TOKEN
+      -Dsonar.cfamily.build-wrapper-output=bw-output
+      -Dsonar.cfamily.gcov.reportsPath=.
+  only:
+    - main
+    - master

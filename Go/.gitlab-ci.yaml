@@ -1,0 +1,41 @@
+stages:
+  - test
+  - sonarqube
+
+variables:
+  SONAR_HOST_URL: "https://sonarcloud.io"  # Or your self-hosted SonarQube URL
+  GOCACHE: "$CI_PROJECT_DIR/.cache/go-build"
+
+cache:
+  paths:
+    - .cache/go-build
+
+before_script:
+  - go version
+
+test:
+  image: golang:1.22
+  stage: test
+  script:
+    - go mod download
+    - go test -v ./... -coverprofile=coverage.out
+
+artifacts:
+  paths:
+    - coverage.out
+
+sonarqube-check:
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  stage: sonarqube
+  script:
+    - sonar-scanner
+      -Dsonar.projectKey=$CI_PROJECT_NAME
+      -Dsonar.sources=.
+      -Dsonar.host.url=$SONAR_HOST_URL
+      -Dsonar.login=$SONAR_TOKEN
+      -Dsonar.go.coverage.reportPaths=coverage.out
+  only:
+    - main
+    - master
