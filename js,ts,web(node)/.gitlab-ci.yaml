@@ -1,0 +1,42 @@
+stages:
+  - test
+  - sonarqube
+
+variables:
+  SONAR_HOST_URL: "https://sonarcloud.io"  # Or your self-hosted SonarQube URL
+  NODE_ENV: test
+
+cache:
+  paths:
+    - node_modules/
+
+before_script:
+  - node -v
+  - npm install
+
+test:
+  image: node:18
+  stage: test
+  script:
+    - npm run test -- --coverage
+  artifacts:
+    paths:
+      - coverage/
+
+sonarqube-check:
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  stage: sonarqube
+  script:
+    - sonar-scanner
+      -Dsonar.projectKey=$CI_PROJECT_NAME
+      -Dsonar.sources=src
+      -Dsonar.tests=tests
+      -Dsonar.host.url=$SONAR_HOST_URL
+      -Dsonar.login=$SONAR_TOKEN
+      -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+      -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
+  only:
+    - main
+    - master
